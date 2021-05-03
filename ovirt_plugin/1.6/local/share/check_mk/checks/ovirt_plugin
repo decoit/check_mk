@@ -1,0 +1,362 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8; py-indent-offset: 4 -*-
+
+#
+# oVirt Plugin
+#
+import json
+
+def ovirt_get_version(info):
+    try:
+        if info[0][0] == '@ovirt_version_info':
+            return json.loads(info[0][1])
+    except IndexError:
+        pass
+    return None
+
+def ovirt_get_content(info):
+    try:
+        return json.loads(info[1][0])
+    except ValueError:
+        return None
+
+def ovirt_version_to_string(version_a):
+    try:
+        return "%s.%s" % (version_a["major"], version_a["minor"])
+    except ValueError:
+        return "Unknown"
+
+def ovirt_same_version(version_a, version_b):
+    try:
+        return version_a["major"] == version_b["major"] and version_a["minor"] == version_b["minor"]
+    except ValueError:
+        return False
+
+def ovirt_version_greater_or_equal(version_a, version_b):
+    try:
+        return (version_a["major"] == version_b["major"] and version_a["minor"] >= version_b["minor"] ) or (version_a["major"] > version_b["major"])
+    except ValueError:
+        return False
+
+def inventory_ovirt_overview(parsed):
+    if ovirt_get_version(parsed):
+        yield HostLabel(u"cmk/ovirt_object", u"engine")
+        yield None, {}
+
+def check_ovirt_overview(item, _no_params, parsed):
+    overview = ovirt_get_content(parsed)
+    if not overview or "api" not in overview:
+        return (4, 'Plugin output invalid')
+
+    api = overview["api"]
+    result = ''
+    if "product_info" in api and "version" in api["product_info"] and "full_version" in api["product_info"]["version"]:
+        result += "oVirt Engine %s" % api["product_info"]["version"]["full_version"]
+
+    result += " ("
+    state = 0
+    if "summary" in api and "hosts" in api["summary"]:
+        result += " %s of %s hosts active -" % (api["summary"]["hosts"].get("active", 0), api["summary"]["hosts"].get("total", 0))
+    if "summary" in api and "storage_domains" in api["summary"]:
+        result += " %s of %s storage domains active -" % (api["summary"]["storage_domains"].get("active", 0), api["summary"]["storage_domains"].get("total", 0))
+    if "summary" in api and "vms" in api["summary"]:
+        result += " %s of %s vms active -" % (api["summary"]["vms"].get("active", 0), api["summary"]["vms"].get("total", 0))
+    
+    if result[-1] == "(":
+        result = result[:-1]
+    else:
+        result = result[:-1] + ")"
+
+    if "global_maintenance" in overview:
+        if overview['global_maintenance']:
+            result += ", Engine is in global maintenance (!!)"
+            state = max(state, 2)            
+
+    return (state, result)
+
+check_info['ovirt_overview'] = {
+    "inventory_function"      : inventory_ovirt_overview,
+    "check_function"          : check_ovirt_overview,
+    "service_description"     : "oVirt Engine",
+    "has_perfdata"            : False,
+}
+
+
+def inventory_ovirt_hosts(parsed):
+    if ovirt_get_version(parsed):
+        yield None, {}
+        
+
+def check_ovirt_hosts(item, _no_params, parsed):
+    host = ovirt_get_content(parsed)
+    if not host:
+        return (4, 'Plugin Output not valid')
+
+    result = ''
+    
+    if "status" in host and host["status"]:
+        result += ", Status: %s" % host["status"]
+    if "type" in host and host["type"]:
+        result += ", Type: %s" % host["type"]
+    if "version" in host and host["version"] and "full_version" in host["version"]:
+        result += ", Version: %s" % host["version"]["full_version"]
+    
+    state = 0
+    
+    if "hosted_engine" in host and host["hosted_engine"] and "local_maintenance" in host["hosted_engine"] and host["hosted_engine"]["local_maintenance"] == "true":
+        state = max(1, state)
+        result += " - host in local maintainance (!)"
+
+    return (state, result[2:])
+    
+
+check_info['ovirt_hosts'] = {
+    "inventory_function"      : inventory_ovirt_hosts,
+    "check_function"          : check_ovirt_hosts,
+    "service_description"     : "oVirt Host",
+    "has_perfdata"            : False,
+}
+
+
+
+def inventory_ovirt_snapshots(parsed):
+    if ovirt_get_version(parsed):
+        yield None, {}
+
+def check_ovirt_snapshots(item, params, parsed):
+    vm = ovirt_get_content(parsed)
+    if not vm or "snapshots" not in vm:
+        return (4, 'Plugin output invalid')
+
+    snapshots = vm["snapshots"]
+    if not snapshots:
+        return (0, "No snapshots found.")
+    
+    ignore = []
+    if "ignore" in params and params["ignore"]:
+        ignore.extend([ regex(rex) for rex in params["ignore"]])
+
+    allow = []
+    if "allow" in params and params["allow"]:
+        allow.extend([ regex(rex) for rex in params["allow"]])
+
+    if bool(allow) != bool(ignore):  # XOR (Only one of both lists has elements)
+        # If only allow has elements, then ignore everything else
+        if not ignore:
+            ignore.append(regex('.*'))
+
+    result = ''
+    state = 0
+    found = False
+    for snapshot in snapshots:
+        if "description" in snapshot \
+            and any( skip.match(snapshot["description"]) for skip in ignore ) \
+            and not any( take.match(snapshot["description"]) for take in allow ):
+            continue
+        if "snapshot_type" in snapshot and "active" == snapshot["snapshot_type"]:
+            continue
+        found = True
+        result += ", " + snapshot["description"]
+        state = max(state, params.get("state", 1))
+    
+    if found:
+        return (state, "Found snapshots: " + result[2:])
+    return (0, "No snapshots found")
+
+
+check_info['ovirt_snapshots'] = {
+    "inventory_function"      : inventory_ovirt_snapshots,
+    "check_function"          : check_ovirt_snapshots,
+    "service_description"     : "oVirt Snapshots",
+    "has_perfdata"            : False,
+    "group"                   : 'ovirt_snapshots',
+}
+
+
+def inventory_ovirt_snapshots_engine(parsed):
+    if ovirt_get_version(parsed):
+        yield None, {}
+
+def check_ovirt_snapshots_engine(item, params, parsed):
+    if len(parsed) < 2:
+        return (0, "No snapshots found.")
+
+    ignore = []
+    if "ignore" in params and params["ignore"]:
+        ignore.extend([ regex(rex) for rex in params["ignore"]])
+
+    allow = []
+    if "allow" in params and params["allow"]:
+        allow.extend([ regex(rex) for rex in params["allow"]])
+
+    if bool(allow) != bool(ignore):  # XOR (Only one of both lists has elements)
+        # If only allow has elements, then ignore everything else
+        if not ignore:
+            ignore.append(regex('.*'))
+
+    result = ''
+    state = 0
+    found = False
+
+    for vm_json in parsed[1:]:
+        try:
+            vm = json.loads(vm_json[0])
+        except ValueError:
+            continue
+
+        if not vm or "snapshots" not in vm:
+            return (3, 'Plugin output invalid')
+
+        snapshots = vm["snapshots"]
+        if not snapshots:
+            continue
+
+
+        for snapshot in snapshots:
+            if "description" in snapshot \
+                and any( skip.match(snapshot["description"]) for skip in ignore ) \
+                and not any( take.match(snapshot["description"]) for take in allow ):
+                continue
+            if "snapshot_type" in snapshot and "active" == snapshot["snapshot_type"]:
+                continue
+            found = True
+            result += ", %s (on vm %s)" % (snapshot["description"], vm["name"])
+            state = max(state, params.get("state", 1))
+
+    if found:
+        return (state, "Found snapshots: " + result[2:])
+    return (0, "No Snapshots found")
+
+
+check_info['ovirt_snapshots_engine'] = {
+    "inventory_function"      : inventory_ovirt_snapshots_engine,
+    "check_function"          : check_ovirt_snapshots_engine,
+    "service_description"     : "oVirt Snapshots",
+    "has_perfdata"            : False,
+    "group"                   : 'ovirt_snapshots',
+}
+
+
+
+
+def inventory_ovirt_vmstats(parsed):
+    if ovirt_get_version(parsed):
+        vm = ovirt_get_content(parsed)
+        if vm and "statistics" in vm:
+            for stat in vm["statistics"]:
+                yield stat["description"], {}
+
+def check_ovirt_vmstats(item, _no_params, parsed):
+    if ovirt_get_version(parsed):
+        vm = ovirt_get_content(parsed)
+        if vm and "statistics" in vm:
+            for stat in vm["statistics"]:
+                if stat["description"] == item:
+                    return (0, "%s %s" % (stat["value"], stat["unit"]), [(stat["name"], float(stat["value"]))])
+    
+
+
+check_info['ovirt_vmstats'] = {
+    "inventory_function"      : inventory_ovirt_vmstats,
+    "check_function"          : check_ovirt_vmstats,
+    "service_description"     : "oVirt %s",
+    "has_perfdata"            : True,
+    "group"                   : "ovirt_vmstats",
+}
+
+def inventory_ovirt_storage_domains(parsed):
+    if ovirt_get_version(parsed):
+        storage_domains = ovirt_get_content(parsed)
+        if storage_domains and "storage_domains" in storage_domains:
+            for domain in storage_domains["storage_domains"]:
+                if domain.get("status", "") == "inactive":
+                    continue
+                yield "%s id:%s" % (domain["name"], domain["id"]), {}
+
+def check_ovirt_storage_domains(item, params, parsed):
+    if not ovirt_get_version(parsed):
+        yield (3, "Plugin output invalid")
+        return
+
+    storage_domains = ovirt_get_content(parsed)
+
+    if storage_domains and "storage_domains" in storage_domains:
+        for domain in storage_domains["storage_domains"]:
+            if "%s id:%s" % (domain["name"], domain["id"]) != item:
+                continue
+
+            if domain["status"] == "inactive":
+                yield (3, "Domain inactive")
+                return
+
+            mib = 1024.0**2
+            committed_bytes = float(domain.get("committed", 0))
+            available_bytes = float(domain.get("available", 0))
+            size_bytes = available_bytes + float(domain.get("used", 0))
+
+            if size_bytes is None or size_bytes == 0 or available_bytes is None:
+                return
+
+            yield df_check_filesystem_single(
+                item,
+                size_bytes / mib,
+                available_bytes / mib,
+                0,
+                None,
+                None,
+                params
+            )
+
+
+check_info['ovirt_storage_domains'] = {
+    "inventory_function"      : inventory_ovirt_storage_domains,
+    "check_function"          : check_ovirt_storage_domains,
+    "service_description"     : "oVirt Storage Domain %s",
+    "has_perfdata"            : True,
+    "includes"                : ["df.include", "size_trend.include"],
+    "group"                   : "ovirt_storage_domains",
+}
+
+
+def inventory_ovirt_compatibility(parsed):
+    if ovirt_get_version(parsed):
+        yield None, {}
+
+def check_ovirt_compatibility(item, _no_params, parsed):
+    if not ovirt_get_version(parsed):
+        yield (3, "Plugin Output Invalid")
+        return
+
+    data = ovirt_get_content(parsed)
+    data_center_dict = { d["id"] : d for d in data.get("datacenters", []) }
+    clusters = data.get("cluster", [])
+
+    engine = data.get("engine", {})
+    engine_version = engine.get("version", {})
+
+    yield (0, "Checked %d datacenters and %d clusters" % (len(data_center_dict.keys()), len(clusters)))
+
+    for cluster in clusters:
+        if not "data_center" in cluster or "id" not in cluster["data_center"]:
+            continue
+        
+        dc = data_center_dict.get(cluster["data_center"]["id"])
+        if not dc:
+            yield (3, "Could not find data center %s in plugin output" % cluster["data_center"]["id"])
+            continue
+
+        cluster_version = cluster.get("version",{})
+
+        if engine_version and cluster_version and not ovirt_version_greater_or_equal(cluster_version, engine_version):
+            yield (1, "Cluster %s version (%s) is lower then engine (%s)!" % (cluster["name"], ovirt_version_to_string(cluster_version), ovirt_version_to_string(engine_version)))
+
+        if not any ( ovirt_same_version(cluster_version, data_center_compat_version) 
+                        for data_center_compat_version in dc.get("supported_versions", {}).get("version",[]) ):
+            yield (1, "Cluster %s version (%s) not compatible to DataCenter!" % (cluster["name"], ovirt_version_to_string(cluster_version)))
+
+check_info['ovirt_compatibility'] = {
+    "inventory_function"      : inventory_ovirt_compatibility,
+    "check_function"          : check_ovirt_compatibility,
+    "service_description"     : "oVirt Storage Compatibility",
+    "has_perfdata"            : False,
+}

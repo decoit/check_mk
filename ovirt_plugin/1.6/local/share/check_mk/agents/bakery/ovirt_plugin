@@ -1,0 +1,44 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8; py-indent-offset: 4 -*-
+
+def bake_ovirt_plugin(opsys, conf, conf_dir, plugins_dir):
+    if (conf["interval"] and int(conf["interval"]) > 60):
+        target_dir = plugins_dir + "/%d" % conf["interval"]
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir)
+    else:
+        target_dir = plugins_dir
+
+    plugin_filepath="/ovirt_plugin.py"
+
+    if (conf.get("python_version") and str(conf["python_version"]) == "2"):
+        plugin_filepath="/ovirt_plugin_2.py"
+
+    try:
+        shutil.copy2(cmk.paths.local_agents_dir + "/plugins" + plugin_filepath, target_dir + plugin_filepath)
+    except:
+        # since 1.6
+        shutil.copy2(cmk.utils.paths.local_agents_dir + "/plugins" + plugin_filepath, target_dir + plugin_filepath)
+    os.chmod(target_dir + plugin_filepath, 0755)
+
+    # Create the agent configuration
+    content = agent_file_header
+    content += "[OVIRT]\n"
+    if "credentials" in conf:
+        content += "username=%s\n" \
+                   "password=%s\n" % conf['credentials']
+    if "engine_fqdn" in conf:
+        content += "engine_fqdn=%s\n" % conf['engine_fqdn']
+    if "engine_url" in conf:
+        content += "engine_url=%s\n" % conf['engine_url']
+    if "generate_piggyback" in conf:
+        content += "generate_piggyback=%s\n" % conf['generate_piggyback']
+
+    cfg_file = conf_dir + "/ovirt_plugin.cfg"
+    file(cfg_file, "w").write(content)
+
+
+bakery_info["ovirt_plugin"] = {
+    "bake_function": bake_ovirt_plugin,
+    "os": ["linux", ],
+}
