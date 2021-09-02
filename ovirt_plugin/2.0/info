@@ -1,0 +1,35 @@
+{'author': 'DECOIT GmbH (tklecker)',
+ 'description': 'This plugin monitors a ovirt infrastructure using the ovirt '
+                'api on the host system.\n'
+                '\n'
+                'It can monitor the hosts, snapshots, storage domains and '
+                'general statistics. The statistics can be generated as '
+                'piggyback data, just like checkmk does with the vmware '
+                'agent.\n'
+                '\n'
+                'Additionaly compatibility issues with different cluster and '
+                'engine versions after a cluster or engine update are '
+                'monitored.\n'
+                '\n'
+                'It contains the checkmk Enterprise Edition feature for baking '
+                'agents and wato GUIs for parameter definition.\\n\n',
+ 'download_url': 'https://github.com/decoit/check_mk/tree/main/ovirt_plugin/2.0',
+ 'files': {'agent_based': ['ovirt_compatibility.py',
+                           'ovirt_hosts.py',
+                           'ovirt_overview.py',
+                           'ovirt_snapshots.py',
+                           'ovirt_snapshots_engine.py',
+                           'ovirt_storage_domains.py',
+                           'ovirt_vmstats.py'],
+           'agents': ['plugins/ovirt_plugin.py', 'plugins/ovirt_plugin_2.py'],
+           'lib': ['check_mk/base/cee/plugins/bakery/ovirt_plugin.py',
+                   'python3/cmk/base/cee/plugins/bakery/ovirt_plugin.py'],
+           'web': ['plugins/wato/ovirt_plugin_cee.py',
+                   'plugins/wato/ovirt_plugin.py']},
+ 'name': 'ovirt_plugin',
+ 'num_files': 13,
+ 'title': 'Ovirt Plugin',
+ 'version': '2.0',
+ 'version.min_required': '2.0.0',
+ 'version.packaged': '2.0.0p9',
+ 'version.usable_until': None}
