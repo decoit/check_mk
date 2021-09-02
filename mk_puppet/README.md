@@ -18,4 +18,4 @@ It contains the [checkmk](https://checkmk.com/) Enterprise Edition feature for b
 
 ### Example:
 
-![Puppet](https://raw.githubusercontent.com/decoit/check_mk/main/site_media/mk_puppet.jpg "Puppet")
+![Puppet](https://github.com/decoit/check_mk/blob/main/site_media/mk_puppet.jpg?raw=true)
