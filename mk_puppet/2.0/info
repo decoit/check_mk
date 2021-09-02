@@ -1,0 +1,20 @@
+{'author': 'DECOIT GmbH (tklecker)',
+ 'description': 'Version 2.0 for cmk 2.0 of the mk_puppet plugin by Allan '
+                'GooD.\n'
+                '\n'
+                'Supplies a puppet plugin for linux an windows clients and '
+                'checks for last run, failed events and resources.  \n',
+ 'download_url': 'https://github.com/decoit/check_mk/tree/main/mk_puppet',
+ 'files': {'agent_based': ['mk_puppet.py'],
+           'agents': ['plugins/mk_puppet', 'plugins/mk_puppet.ps1'],
+           'lib': ['python3/cmk/base/cee/plugins/bakery/mk_puppet.py',
+                   'check_mk/base/cee/plugins/bakery/mk_puppet.py'],
+           'web': ['plugins/wato/mk_puppet.py',
+                   'plugins/wato/mk_puppet_cee.py']},
+ 'name': 'mk_puppet',
+ 'num_files': 7,
+ 'title': 'Checks for Puppet Agent',
+ 'version': '2.0',
+ 'version.min_required': '2.0.0',
+ 'version.packaged': '2.0.0p9',
+ 'version.usable_until': None}
