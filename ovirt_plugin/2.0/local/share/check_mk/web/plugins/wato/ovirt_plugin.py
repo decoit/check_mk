@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- encoding: utf-8; py-indent-offset: 4 -*-
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
 #
 # Ovirt Plugin
-# (c) 2016 DECOIT GmbH
+# (c) 2021 DECOIT GmbH
 #
 
 #

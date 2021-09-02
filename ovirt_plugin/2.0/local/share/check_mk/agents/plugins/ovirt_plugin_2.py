@@ -1,10 +1,10 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- encoding: utf-8; py-indent-offset: 4 -*-
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
 #
 # Ovirt Plugin
-# (c) 2016 DECOIT GmbH
+# (c) 2021 DECOIT GmbH
 #
 
 #
@@ -19,7 +19,7 @@
 # to the Free Software Foundation, Inc., 51 Franklin St,  Fifth Floor,
 # Boston, MA 02110-1301 USA.
 
-r"""Check_MK Agent Plugin: ovirt_plugin.py
+r"""Check_MK Agent Plugin: ovirt_plugin_2.py
 
 This plugin is configured using an ini-style configuration file,
 i.e. a file with lines of the form 'key: value'.
@@ -40,8 +40,8 @@ import argparse
 import functools
 import time
 import multiprocessing
-import configparser
 from pprint import pprint
+import ConfigParser as configparser
 
 try:
     import requests
@@ -155,7 +155,8 @@ class MKOvirtClient:
 
     HEADERS = {'Accept': 'application/json', 'Version': '4'}
 
-    def __init__(self, config: dict):
+    def __init__(self, config):
+        # type: (dict)
         self._engine_url = config["engine_url"]
         self._auth = (config["username"], config["password"])
         self._engine_fqdn = config["engine_fqdn"]
@@ -192,14 +193,16 @@ def write_section_compatibility():
 GLOBAL_HOSTS = []
 
 
-def get_hosts(client: MKOvirtClient):
+def get_hosts(client):
+    # type: (MKOvirtClient)
     global GLOBAL_HOSTS
     if not GLOBAL_HOSTS:
         GLOBAL_HOSTS = client.get_data("/api/hosts?all_content=true")
     return GLOBAL_HOSTS
 
 
-def section_overview(client: MKOvirtClient, generate_piggyback: bool = True):
+def section_overview(client, generate_piggyback = True):
+    # type: (MKOvirtClient, bool)
     api = client.get_data("/api")
     result = {}
     for key in ["product_info", "summary"]:
@@ -221,7 +224,8 @@ def section_overview(client: MKOvirtClient, generate_piggyback: bool = True):
     section.write()
 
 
-def section_hosts(client: MKOvirtClient, generate_piggyback: bool = True):
+def section_hosts(client, generate_piggyback = True):
+    # type: (MKOvirtClient, bool)
     if not generate_piggyback:
         return
     hosts = get_hosts(client)
@@ -236,8 +240,8 @@ def section_hosts(client: MKOvirtClient, generate_piggyback: bool = True):
         section.append(json.dumps(host_obj))
         section.write()
 
-
-def read_data_centers(client: MKOvirtClient, generate_piggyback: bool = True):
+def read_data_centers(client, generate_piggyback = True):
+    # type: (MKOvirtClient, bool)
     datacenters = client.get_data("/api/datacenters?follow=storage_domains")
     data_center_result = {}
     storage_domain_result = {}
@@ -272,7 +276,8 @@ def read_data_centers(client: MKOvirtClient, generate_piggyback: bool = True):
     section.write()
 
 
-def read_clusters(client: MKOvirtClient, generate_piggyback: bool = True):
+def read_clusters(client, generate_piggyback = True):
+    # type: (MKOvirtClient, bool)
     clusters = client.get_data("/api/clusters")
     cluster_result = {}
 
@@ -296,7 +301,8 @@ def read_clusters(client: MKOvirtClient, generate_piggyback: bool = True):
     section.write()
 
 
-def section_vms_stats(client: MKOvirtClient, generate_piggyback: bool = True):
+def section_vms_stats(client, generate_piggyback = True):
+    # type: (MKOvirtClient, bool)
     if not generate_piggyback:
         return
 
@@ -324,7 +330,8 @@ def section_vms_stats(client: MKOvirtClient, generate_piggyback: bool = True):
         section.write()
 
 
-def section_vms_snapshots(client: MKOvirtClient, generate_piggyback: bool = True):
+def section_vms_snapshots(client, generate_piggyback = True):
+    # type: (MKOvirtClient, bool)
     vms = client.get_data("/api/vms?follow=snapshots")
     if not vms or not "vm" in vms:
         return
@@ -362,7 +369,8 @@ def section_vms_snapshots(client: MKOvirtClient, generate_piggyback: bool = True
 #   '----------------------------------------------------------------------'
 
 
-def str2bool(v: str):
+def str2bool(v):
+    # type: (str)
     return v is not None and v.lower() in ("yes", "true", "t", "1")
 
 
@@ -377,7 +385,7 @@ def report_exception_to_server(exc, location):
 def main():
 
     args = parse_arguments()
-    config: dict = get_config(args.config_file)
+    config = get_config(args.config_file)  # type: dict
 
     if not config["engine_url"]:
         report_exception_to_server("Config could not be read", "main")

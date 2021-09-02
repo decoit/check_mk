@@ -4,7 +4,7 @@
 
 #
 # Ovirt Plugin
-# (c) 2016 DECOIT GmbH
+# (c) 2021 DECOIT GmbH
 #
 
 #
@@ -406,3 +406,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
