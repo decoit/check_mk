@@ -22,30 +22,26 @@
 import json
 from typing import Dict, List
 
-from .agent_based_api.v1.type_defs import (
+from cmk.base.plugins.agent_based.agent_based_api.v1.type_defs import (
     CheckResult,
     DiscoveryResult,
 )
 
 from cmk.base.plugins.agent_based.agent_based_api.v1 import (
-    Metric,
     get_value_store,
     register,
     Result,
     Service,
     State,
-    HostLabel,
-    regex,
 )
 
-from .utils import df
+from cmk.base.plugins.agent_based.utils import df
 
 
 def ovirt_storage_domains_parse(string_table):
     if string_table[0][0] != '@ovirt_version_info':
         raise ValueError('Version Header required')
     return json.loads(string_table[1][0])['storage_domains']
-
 
 
 register.agent_section(
@@ -58,14 +54,14 @@ def discovery_ovirt_storage_domains(section) -> DiscoveryResult:
     for domain in section:
         if domain.get("status", "") == "inactive":
             continue
-        yield Service( item = f"{domain['name']} id:{domain['id']}")
+        yield Service(item = f"{domain['name']} id {domain['id']}")
 
 
 def check_ovirt_storage_domains(item, params, section) -> CheckResult:
     value_store = get_value_store()
-    
+
     for domain in section:
-        if f"{domain['name']} id:{domain['id']}" != item:
+        if f"{domain['name']} id {domain['id']}" != item:
             continue
 
         if domain["status"] == "inactive":
