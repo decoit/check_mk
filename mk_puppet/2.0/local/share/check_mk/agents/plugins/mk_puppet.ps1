@@ -5,7 +5,7 @@
 
 $lastrun = "C:\ProgramData\PuppetLabs\puppet\var\state\last_run_summary.yaml"
 if (Test-Path $lastrun) {
-  Write-Output "<<<check_puppet_agent>>>"
+  Write-Output "<<<puppet_agent>>>"
   $content = Get-Content $lastrun
   $content = $content -replace “  ”,””
   $content | Select-String -Pattern “last_run:” | %{$_ -replace “  ”,””}
