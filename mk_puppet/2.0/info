@@ -1,5 +1,5 @@
 {'author': 'DECOIT GmbH (tklecker)',
- 'description': 'Version 2.0 for cmk 2.0 of the mk_puppet plugin by Allan '
+ 'description': 'Version 2.0.1 for cmk 2.0 of the mk_puppet plugin by Allan '
                 'GooD.\n'
                 '\n'
                 'Supplies a puppet plugin for linux an windows clients and '
@@ -14,7 +14,7 @@
  'name': 'mk_puppet',
  'num_files': 7,
  'title': 'Checks for Puppet Agent',
- 'version': '2.0',
+ 'version': '2.0.1',
  'version.min_required': '2.0.0',
  'version.packaged': '2.0.0p9',
  'version.usable_until': None}
