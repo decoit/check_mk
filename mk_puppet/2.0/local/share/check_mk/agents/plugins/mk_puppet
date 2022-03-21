@@ -1,6 +1,11 @@
 #!/bin/bash
 
-LASTRUN=("/var/lib/puppet/state/last_run_summary.yaml" "/opt/puppetlabs/puppet/cache/state/last_run_summary.yaml")
+LASTRUN=(
+  "/var/lib/puppet/state/last_run_summary.yaml"
+  "/opt/puppetlabs/puppet/cache/state/last_run_summary.yaml"
+  "/opt/puppetlabs/puppet/public/last_run_summary.yaml"
+)
+
 for i in ${LASTRUN[@]}
 do 
   if [ -e "${i}" ]; then
