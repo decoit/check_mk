@@ -104,7 +104,7 @@ def parse_hp_icf_xcvr_table(string_table):
             (parse_alarm_level(line[26], divisor=10.0), parse_alarm_level(line[24], divisor=10.0)),
             lambda v: "%.3f µW (%.3f dBm)" % (v, _uw_to_dbm(v)))
         result[item] = values
-    pprint.pprint(result)
+    # pprint.pprint(result)
     return result
 
 
