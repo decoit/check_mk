@@ -63,6 +63,8 @@ def _dbm_to_uw(dbm):
 
 
 def _uw_to_dbm(uw):
+    if float(uw) == 0.0:
+        return float("-inf")
     return 10 * math.log10(uw / 1000000.0) + 30
 
 
@@ -77,7 +79,10 @@ def parse_hp_icf_xcvr_table(string_table):
             continue
 
         item = interface_index_padded[line[0]]
+        item_information = {}
+        item_information["supports_dom"] = line[2] == "1"
         values = {}
+
         values["Temperature"] = (
             parse_value(line[3]),
             (parse_alarm_level(line[11]), parse_alarm_level(line[9])),
@@ -103,7 +108,8 @@ def parse_hp_icf_xcvr_table(string_table):
             (parse_alarm_level(line[27], divisor=10.0), parse_alarm_level(line[25], divisor=10.0)),
             (parse_alarm_level(line[26], divisor=10.0), parse_alarm_level(line[24], divisor=10.0)),
             lambda v: "%.3f µW (%.3f dBm)" % (v, _uw_to_dbm(v)))
-        result[item] = values
+        item_information["values"] = values
+        result[item] = item_information
     # pprint.pprint(result)
     return result
 
@@ -162,15 +168,18 @@ register.snmp_section(
 
 
 def discovery_hp_icf_xcvr_table(section):
-    for item, _ in section.items():
-        yield Service(item=item)
+    for item, item_information in section.items():
+        any_measurement = any([value != 0.0 for value, _, _, _ in item_information["values"].values()])
+
+        if item_information["supports_dom"] and any_measurement:
+            yield Service(item=item)
 
 
 def check_hp_icf_xcvr_table(item, section):
     if item in section:
-        data = section[item]
-        for key in sorted(data):
-            value, levels_lower, levels_upper, render_func = data[key]
+        item_information = section[item]
+        for key in sorted(item_information["values"]):
+            value, levels_lower, levels_upper, render_func = item_information["values"][key]
             yield from check_levels(value=value, levels_upper=levels_upper, levels_lower=levels_lower, metric_name=key, render_func=render_func, label=key)
             if levels_lower:
                 lower_warn = "never" if levels_lower[0] is None else render_func(levels_lower[0])
